@@ -52,7 +52,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
         res.json({
             token,
-            user: { id: user._id, email: user.email, role: user.role, firstName: user.firstName }
+            user: { _id: user._id, email: user.email, role: user.role, firstName: user.firstName }
         })
     } catch (error) {
         res.status(500).json({ message: "Server error during login", error })
