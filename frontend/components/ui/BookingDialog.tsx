@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import api from "@/lib/api"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
     Dialog,
@@ -18,6 +17,8 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog"
+import { format } from "date-fns"
+import { Calendar } from "@/components/ui/calendar"
 
 interface BookingDialogProps {
     resource: Resource | null
@@ -26,25 +27,73 @@ interface BookingDialogProps {
     initialDate?: string
 }
 
+const TIME_SLOTS = [
+    "09:00", "10:00", "11:00", "12:00", "13:00",
+    "14:00", "15:00", "16:00", "17:00", "18:00"
+]
+
+interface BookedSlot {
+    startTime: string
+    endTime: string
+    resourceId: string
+}
+
 export default function BookingDialog({ resource, isOpen, onClose, initialDate }: BookingDialogProps) {
-    const [bookingDate, setBookingDate] = useState("")
-    const [startTime, setStartTime] = useState("")
-    const [endTime, setEndTime] = useState("")
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
+    const [selectedTime, setSelectedTime] = useState<string>("")
+    const [bookedSlots, setBookedSlots] = useState<BookedSlot[]>([])
+
     const [bookingError, setBookingError] = useState("")
     const [bookingSuccess, setBookingSuccess] = useState("")
-
     const [showUnsavedAlert, setShowUnsavedAlert] = useState(false)
-    const hasChanges = bookingDate !== (initialDate || "") || startTime !== "" || endTime !== ""
+
+    const isDateChanged = initialDate ?
+        (selectedDate && format(selectedDate, "yyyy-MM-dd") !== initialDate) :
+        !!selectedDate
+    const hasChanges = isDateChanged || selectedTime !== ""
 
     useEffect(() => {
         if (isOpen) {
-            setBookingDate(initialDate || "")
-            setStartTime("")
-            setEndTime("")
+            setSelectedDate(initialDate ? new Date(initialDate) : new Date())
+            setSelectedTime("")
             setBookingError("")
             setBookingSuccess("")
         }
     }, [isOpen, initialDate])
+
+    useEffect(() => {
+        const fetchAvailability = async () => {
+            if (!selectedDate || !resource) return
+
+            try {
+                const dateString = format(selectedDate, "yyyy-MM-dd")
+                const response = await api.get(`/availability?date=${dateString}`)
+
+                const resourceBookings = response.data.filter(
+                    (b: BookedSlot) => b.resourceId === resource._id
+                )
+                setBookedSlots(resourceBookings)
+            } catch (error) {
+                console.error("Failed to fetch availability", error)
+            }
+        }
+
+        if (isOpen) {
+            fetchAvailability()
+        }
+    }, [selectedDate, resource, isOpen])
+
+    const isSlotBooked = (time: string) => {
+        if (!selectedDate) return false
+
+        const slotDateTime = new Date(`${format(selectedDate, "yyyy-MM-dd")}T${time}:00`).getTime()
+
+        return bookedSlots.some(slot => {
+            const start = new Date(slot.startTime).getTime()
+            const end = new Date(slot.endTime).getTime()
+            return slotDateTime >= start && slotDateTime < end
+        })
+    }
 
     const handleOpenChange = (open: boolean) => {
         if (!open) {
@@ -57,9 +106,8 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate }
     }
 
     const resetAndClose = () => {
-        setBookingDate(initialDate || "")
-        setStartTime("")
-        setEndTime("")
+        setSelectedDate(undefined)
+        setSelectedTime("")
         setBookingError("")
         setBookingSuccess("")
         setShowUnsavedAlert(false)
@@ -72,19 +120,17 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate }
         setBookingError("")
         setBookingSuccess("")
 
-        if (!bookingDate || !startTime || !endTime) {
-            setBookingError("Please fill in all date and time fields")
+        if (!selectedDate || !selectedTime) {
+            setBookingError("Please select both date and time.")
             return
         }
 
         try {
-            const startDateTime = new Date(`${bookingDate}T${startTime}`).toISOString()
-            const endDateTime = new Date(`${bookingDate}T${endTime}`).toISOString()
+            const dateStr = format(selectedDate, "yyyy-MM-dd")
+            const startDateTime = new Date(`${dateStr}T${selectedTime}:00`).toISOString()
 
-            if (new Date(startDateTime) >= new Date(endDateTime)) {
-                setBookingError("End time must be after start time")
-                return
-            }
+            const [hours, minutes] = selectedTime.split(":")
+            const endDateTime = new Date(`${dateStr}T${String(Number(hours) + 3).padStart(2, "0")}:${minutes}:00`).toISOString()
 
             await api.post("/bookings", {
                 resourceId: resource?._id,
@@ -99,64 +145,64 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate }
             }, 2000)
 
         } catch (error: any) {
-            if (error.response?.status === 409) {
-                setBookingError("This time slot is already booked. Please choose another time")
-            } else {
-                setBookingError(error.response?.data?.message || "An error occurred during booking")
-            }
+            setBookingError(error.response?.data?.message || "An error occurred during booking.")
         }
     }
 
     return (
         <>
             <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-                <DialogContent className="sm:max-w-106.25">
+                <DialogContent className="sm:max-w-125">
                     <form onSubmit={handleBookingSubmit}>
                         <DialogHeader>
-                            <DialogTitle>Book Resource</DialogTitle>
+                            <DialogTitle>Book {resource?.name}</DialogTitle>
                             <DialogDescription>
-                                Select the date and time for {resource?.name}
+                                Select an available date and time slot.
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="date">Date</Label>
-                                <Input
-                                    id="date"
-                                    type="date"
-                                    value={bookingDate}
-                                    onChange={(e) => setBookingDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="startTime">Start Time</Label>
-                                    <Input
-                                        id="startTime"
-                                        type="time"
-                                        value={startTime}
-                                        onChange={(e) => setStartTime(e.target.value)}
+                        <div className="grid gap-6 py-4 md:grid-cols-2">
+                            <div className="flex flex-col gap-2">
+                                <Label>Date</Label>
+                                <div className="border rounded-md p-2 flex justify-center bg-white">
+                                    <Calendar
+                                        mode="single"
+                                        selected={selectedDate}
+                                        onSelect={setSelectedDate}
+                                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                                     />
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="endTime">End Time</Label>
-                                    <Input
-                                        id="endTime"
-                                        type="time"
-                                        value={endTime}
-                                        onChange={(e) => setEndTime(e.target.value)}
-                                    />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <Label>Time Slots (3 Hour)</Label>
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    {TIME_SLOTS.map((time) => {
+                                        const booked = isSlotBooked(time)
+                                        const selected = selectedTime === time
+                                        return (
+                                            <Button
+                                                key={time}
+                                                type="button"
+                                                variant={selected ? "default" : "outline"}
+                                                disabled={booked || !selectedDate}
+                                                onClick={() => setSelectedTime(time)}
+                                                className={booked ? "opacity-50 cursor-not-allowed bg-gray-100" : ""}
+                                            >
+                                                {time}
+                                            </Button>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         </div>
 
-                        {bookingError && <p className="text-sm text-red-500 font-medium mb-2">{bookingError}</p>}
-                        {bookingSuccess && <p className="text-sm text-green-600 font-medium mb-2">{bookingSuccess}</p>}
+                        {bookingError && <p className="text-sm text-red-500 font-medium">{bookingError}</p>}
+                        {bookingSuccess && <p className="text-sm text-green-600 font-medium">{bookingSuccess}</p>}
 
-                        <DialogFooter>
+                        <DialogFooter className="mt-4">
                             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-                            <Button type="submit">Confirm Booking</Button>
+                            <Button type="submit" disabled={!selectedTime || !selectedDate}>Confirm Booking</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
@@ -167,13 +213,13 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate }
                     <AlertDialogHeader>
                         <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
                         <AlertDialogDescription>
-                            You have entered booking details. If you close this window, your data will be lost. Are you sure?
+                            You have selected a time slot. If you close this window, your data will be lost.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setShowUnsavedAlert(false)}>Continue Editing</AlertDialogCancel>
                         <AlertDialogAction onClick={resetAndClose} className="bg-red-600 hover:bg-red-700 text-white">
-                            Discard Changes
+                            Discard
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

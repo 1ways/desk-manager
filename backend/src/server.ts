@@ -7,6 +7,7 @@ import { authenticate, AuthRequest } from "./middleware/auth"
 import resourceRoutes from "./routes/resourceRoutes"
 import bookingRoutes from "./routes/bookingRoutes"
 import userRoutes from "./routes/userRoutes"
+import availabilityRoutes from "./routes/availabilityRoutes"
 
 dotenv.config()
 
@@ -28,6 +29,8 @@ app.use("/api/auth", authRoutes)
 app.use("/api/resources", resourceRoutes)
 app.use("/api/bookings", bookingRoutes)
 app.use("/api/users", userRoutes)
+app.use("/api/users", userRoutes)
+app.use("/api/availability", availabilityRoutes)
 
 app.get("/api/protected", authenticate, (req: AuthRequest, res: Response) => {
     res.json({

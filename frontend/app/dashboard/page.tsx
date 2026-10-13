@@ -2,14 +2,17 @@
 
 import BookingDialog from "@/components/ui/BookingDialog"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import api from "@/lib/api"
+import { cn } from "@/lib/utils"
 import { Resource } from "@/shared/types"
 import { useAuthStore } from "@/store/authStore"
-import { Filter, LogOut, MapPin, Monitor } from "lucide-react"
+import { format } from "date-fns"
+import { CalendarIcon, Filter, LogOut, MapPin, Monitor } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -19,7 +22,7 @@ export default function DashboardPage() {
     const [isMounted, setIsMounted] = useState(false)
 
     const [filterType, setFilterType] = useState<string>("all")
-    const [filterDate, setFilterDate] = useState<string>("")
+    const [filterDate, setFilterDate] = useState<Date | undefined>(undefined)
 
     const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -107,15 +110,15 @@ export default function DashboardPage() {
             </header>
 
             <div className="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
-                <div className="flex items-center gap-2 mb-2 md:hidden">
+                <div className="flex items-center gap-2 mb-1 md:hidden">
                     <Filter size={16} className="text-gray-500" />
                     <span className="font-medium">Filters</span>
                 </div>
 
-                <div className="w-full md:w-64 space-y-2">
-                    <Label>Resource Type</Label>
+                <div className="flex flex-col gap-2 w-full md:w-64">
+                    <Label className="text-sm">Resource Type</Label>
                     <Select value={filterType} onValueChange={(value) => setFilterType(value || "all")}>
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full h-8 px-3 py-1">
                             <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -126,21 +129,35 @@ export default function DashboardPage() {
                     </Select>
                 </div>
 
-                <div className="w-full md:w-64 space-y-2 mb-2">
-                    <Label>Date (Check Availability)</Label>
-                    <Input
-                        type="date"
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
-                    />
+                <div className="flex flex-col gap-2 w-full md:w-64">
+                    <Label className="text-sm">Date (Check Availability)</Label>
+                    <Popover>
+                        <PopoverTrigger
+                            className={cn(
+                                "flex h-8 w-full items-center justify-start border border-input bg-background px-3 py-1 text-xs font-normal ring-offset-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                                !filterDate && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-3 w-3" />
+                            {filterDate ? format(filterDate, "PPP") : <span>Pick a date</span>}
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={filterDate}
+                                onSelect={setFilterDate}
+                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                            />
+                        </PopoverContent>
+                    </Popover>
                 </div>
 
                 <Button
-                    className="mb-2"
                     variant="outline"
+                    className="h-8 px-4 text-xs"
                     onClick={() => {
                         setFilterType("all")
-                        setFilterDate("")
+                        setFilterDate(undefined)
                     }}
                 >
                     Reset
@@ -188,7 +205,7 @@ export default function DashboardPage() {
                 resource={selectedResource}
                 isOpen={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
-                initialDate={filterDate}
+                initialDate={filterDate ? format(filterDate, "yyyy-MM-dd") : undefined}
             />
         </div>
     )
