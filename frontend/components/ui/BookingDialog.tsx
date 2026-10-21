@@ -50,9 +50,8 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate, 
     const [bookingSuccess, setBookingSuccess] = useState("")
     const [showUnsavedAlert, setShowUnsavedAlert] = useState(false)
 
-    const isDateChanged = initialDate ?
-        (selectedDate && format(selectedDate, "yyyy-MM-dd") !== initialDate) :
-        !!selectedDate
+    const initialDay = initialDate || format(new Date(), "yyyy-MM-dd")
+    const isDateChanged = !!selectedDate && format(selectedDate, "yyyy-MM-dd") !== initialDay
     const isStartChanged = startTime !== (initialStart || "")
     const isEndChanged = endTime !== (initialEnd || "")
     const hasChanges = isDateChanged || isStartChanged || isEndChanged
