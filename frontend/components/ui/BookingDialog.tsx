@@ -12,7 +12,6 @@ import {
     DialogFooter
 } from "@/components/ui/dialog"
 import { Resource } from "@/shared/types"
-
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
@@ -54,15 +53,18 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate, 
     const isDateChanged = initialDate ?
         (selectedDate && format(selectedDate, "yyyy-MM-dd") !== initialDate) :
         !!selectedDate
-    const isStartChanged = initialStart !== startTime || startTime !== ""
-    const isEndChanged = initialEnd !== endTime || endTime !== ""
+    const isStartChanged = startTime !== (initialStart || "")
+    const isEndChanged = endTime !== (initialEnd || "")
     const hasChanges = isDateChanged || isStartChanged || isEndChanged
 
     useEffect(() => {
         if (isOpen) {
+            const date = initialDate ? new Date(initialDate) : new Date()
+            const isStartInPast = !!initialStart && toDateTime(date, initialStart) < new Date()
+
             setSelectedDate(initialDate ? new Date(initialDate) : new Date())
-            setStartTime(initialStart || "")
-            setEndTime(initialEnd || "")
+            setStartTime(isStartInPast ? "" : initialStart || "")
+            setEndTime(isStartInPast ? "" : initialEnd || "")
             setBookingError("")
             setBookingSuccess("")
         }
