@@ -27,6 +27,8 @@ interface BookingDialogProps {
     isOpen: boolean
     onClose: () => void
     initialDate?: string
+    initialStart?: string
+    initialEnd?: string
 }
 
 interface BookedSlot {
@@ -37,7 +39,7 @@ interface BookedSlot {
 
 const timeOptions = buildTimeOptions()
 
-export default function BookingDialog({ resource, isOpen, onClose, initialDate }: BookingDialogProps) {
+export default function BookingDialog({ resource, isOpen, onClose, initialDate, initialStart, initialEnd }: BookingDialogProps) {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
 
     const [startTime, setStartTime] = useState("")
@@ -52,17 +54,19 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate }
     const isDateChanged = initialDate ?
         (selectedDate && format(selectedDate, "yyyy-MM-dd") !== initialDate) :
         !!selectedDate
-    const hasChanges = isDateChanged || startTime !== "" || endTime !== ""
+    const isStartChanged = initialStart !== startTime || startTime !== ""
+    const isEndChanged = initialEnd !== endTime || endTime !== ""
+    const hasChanges = isDateChanged || isStartChanged || isEndChanged
 
     useEffect(() => {
         if (isOpen) {
             setSelectedDate(initialDate ? new Date(initialDate) : new Date())
-            setStartTime("")
-            setEndTime("")
+            setStartTime(initialStart || "")
+            setEndTime(initialEnd || "")
             setBookingError("")
             setBookingSuccess("")
         }
-    }, [isOpen, initialDate])
+    }, [isOpen, initialDate, initialStart, initialEnd])
 
     useEffect(() => {
         if (!isOpen || !selectedDate || !resource) return

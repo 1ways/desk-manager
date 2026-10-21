@@ -337,6 +337,8 @@ export default function DashboardPage() {
                 isOpen={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
                 initialDate={filterDate ? format(filterDate, "yyyy-MM-dd") : undefined}
+                initialStart={filterStart || undefined}
+                initialEnd={filterEnd || undefined}
             />
         </div>
     )
