@@ -17,6 +17,8 @@ import { CalendarIcon, Filter, LogOut, MapPin, Monitor } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
+const timeOptions = buildTimeOptions()
+
 export default function DashboardPage() {
     const [resources, setResources] = useState<Resource[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -24,6 +26,8 @@ export default function DashboardPage() {
 
     const [filterType, setFilterType] = useState<string>("all")
     const [filterDate, setFilterDate] = useState<Date | undefined>(undefined)
+    const [filterStart, setFilterStart] = useState("")
+    const [filterEnd, setFilterEnd] = useState("")
 
     const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -70,6 +74,23 @@ export default function DashboardPage() {
     const openBookingDialog = (resource: Resource) => {
         setSelectedResource(resource)
         setIsDialogOpen(true)
+    }
+
+    const handleFilterDateChange = (date: Date | undefined) => {
+        setFilterDate(date)
+
+        if (!date) {
+            setFilterStart("")
+            setFilterEnd("")
+        }
+    }
+
+    const handleFilterStartChange = (value: string) => {
+        setFilterStart(value)
+
+        if (filterEnd && filterEnd <= value) {
+            setFilterEnd("")
+        }
     }
 
     const filteredResources = resources.filter(resource => {
@@ -146,11 +167,51 @@ export default function DashboardPage() {
                             <Calendar
                                 mode="single"
                                 selected={filterDate}
-                                onSelect={setFilterDate}
+                                onSelect={handleFilterDateChange}
                                 disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                             />
                         </PopoverContent>
                     </Popover>
+                </div>
+
+                <div className="flex flex-col gap-2 w-full md:w-32">
+                    <Label className="text-sm">From</Label>
+                    <Select
+                        value={filterStart || null}
+                        onValueChange={(value) => handleFilterStartChange(value ?? "")}
+                        disabled={!filterDate}
+                    >
+                        <SelectTrigger className="w-full h-8 px-3 py-1">
+                            <SelectValue placeholder="Start" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {timeOptions.slice(0, -1).map((time) => (
+                                <SelectItem key={time} value={time}>
+                                    {time}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="flex flex-col gap-2 w-full md:w-32">
+                    <Label className="text-sm">To</Label>
+                    <Select
+                        value={filterEnd || null}
+                        onValueChange={(value) => setFilterEnd(value ?? "")}
+                        disabled={!filterDate || !filterStart}
+                    >
+                        <SelectTrigger className="w-full h-8 px-3 py-1">
+                            <SelectValue placeholder="End" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {timeOptions.slice(1).map((time) => (
+                                <SelectItem key={time} value={time} disabled={time <= filterStart}>
+                                    {time}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <Button
@@ -159,6 +220,8 @@ export default function DashboardPage() {
                     onClick={() => {
                         setFilterType("all")
                         setFilterDate(undefined)
+                        setFilterStart("")
+                        setFilterEnd("")
                     }}
                 >
                     Reset
