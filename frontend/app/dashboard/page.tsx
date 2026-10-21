@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import api from "@/lib/api"
-import { buildTimeOptions, dayRangeIso } from "@/lib/booking-time"
+import { buildTimeOptions, toDateTime } from "@/lib/booking-time"
 import { cn } from "@/lib/utils"
-import { Resource } from "@/shared/types"
+import { Availability, Resource, ResourceWithAvailability } from "@/shared/types"
 import { useAuthStore } from "@/store/authStore"
 import { format } from "date-fns"
 import { CalendarIcon, Filter, LogOut, MapPin, Monitor } from "lucide-react"
@@ -18,6 +18,18 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 const timeOptions = buildTimeOptions()
+
+const availabilityLabels: Record<Availability, string> = {
+    free: "Free",
+    booked: "Booked",
+    maintenance: "Maintenance"
+}
+
+const availabilityStyles: Record<Availability, string> = {
+    free: "bg-green-100 text-green-800",
+    booked: "bg-gray-200 text-gray-700",
+    maintenance: "bg-red-100 text-red-800"
+}
 
 export default function DashboardPage() {
     const [resources, setResources] = useState<Resource[]>([])
@@ -28,6 +40,8 @@ export default function DashboardPage() {
     const [filterDate, setFilterDate] = useState<Date | undefined>(undefined)
     const [filterStart, setFilterStart] = useState("")
     const [filterEnd, setFilterEnd] = useState("")
+
+    const [availabilityMap, setAvailabilityMap] = useState<Record<string, Availability>>({})
 
     const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -65,6 +79,44 @@ export default function DashboardPage() {
 
         fetchResources()
     }, [user, router, isMounted, logout])
+
+    useEffect(() => {
+        if (!filterDate || !filterStart || !filterEnd) {
+            setAvailabilityMap({})
+            return
+        }
+
+        let ignore = false
+
+        const fetchAvailability = async () => {
+            try {
+                const from = toDateTime(filterDate, filterStart).toISOString()
+                const to = toDateTime(filterDate, filterEnd).toISOString()
+
+                const response = await api.get("/resources/availability", {
+                    params: {
+                        from,
+                        to
+                    }
+                })
+
+                const map: Record<string, Availability> = {}
+                response.data.forEach((item: ResourceWithAvailability) => {
+                    map[item._id] = item.availability
+                })
+
+                if (!ignore) setAvailabilityMap(map)
+            } catch (error) {
+                console.error("Failed to load availability", error)
+            }
+        }
+
+        fetchAvailability()
+
+        return () => {
+            ignore = true
+        }
+    }, [filterDate, filterStart, filterEnd])
 
     const handleLogout = () => {
         logout()
@@ -239,28 +291,43 @@ export default function DashboardPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredResources.map((resource) => (
-                            <Card key={resource._id} className="hover:shadow-md transition-shadow">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                                    <CardTitle className="text-lg">{resource.name}</CardTitle>
-                                    <Monitor className="text-gray-400" size={20} />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-                                        <MapPin size={16} />
-                                        {resource.location}
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full capitalize">
-                                            {resource.type}
-                                        </span>
-                                        <Button size="sm" onClick={() => openBookingDialog(resource)}>
-                                            Book Now
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                        {filteredResources.map((resource) => {
+                            const availability = availabilityMap[resource._id]
+
+                            return (
+                                <Card key={resource._id} className="hover:shadow-md transition-shadow">
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                                        <CardTitle className="text-lg">{resource.name}</CardTitle>
+                                        <Monitor className="text-gray-400" size={20} />
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                                            <MapPin size={16} />
+                                            {resource.location}
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full capitalize">
+                                                    {resource.type}
+                                                </span>
+                                                {availability && (
+                                                    <span className={cn("text-xs font-medium px-2 py-1 rounded-full", availabilityStyles[availability])}>
+                                                        {availabilityLabels[availability]}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                disabled={availability === "booked"}
+                                                onClick={() => openBookingDialog(resource)}
+                                            >
+                                                Book Now
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
                     </div>
                 )}
             </div>
