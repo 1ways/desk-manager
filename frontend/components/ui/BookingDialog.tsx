@@ -17,8 +17,9 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog"
-import { format } from "date-fns"
+import { addHours, format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
+import { dayRangeIso, overlaps, toDateTime } from "@/lib/booking-time"
 
 interface BookingDialogProps {
     resource: Resource | null
@@ -62,37 +63,39 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate }
     }, [isOpen, initialDate])
 
     useEffect(() => {
+        if (!isOpen || !selectedDate || !resource) return
+
+        let ignore = false
+
         const fetchAvailability = async () => {
-            if (!selectedDate || !resource) return
-
             try {
-                const dateString = format(selectedDate, "yyyy-MM-dd")
-                const response = await api.get(`/availability?date=${dateString}`)
+                const { from, to } = dayRangeIso(selectedDate)
+                const response = await api.get("/availability", {
+                    params: { from, to, resourceId: resource._id }
+                })
 
-                const resourceBookings = response.data.filter(
-                    (b: BookedSlot) => b.resourceId === resource._id
-                )
-                setBookedSlots(resourceBookings)
+                if (!ignore) setBookedSlots(response.data)
             } catch (error) {
                 console.error("Failed to fetch availability", error)
             }
         }
 
-        if (isOpen) {
-            fetchAvailability()
+        fetchAvailability()
+
+        return () => {
+            ignore = true
         }
     }, [selectedDate, resource, isOpen])
 
     const isSlotBooked = (time: string) => {
         if (!selectedDate) return false
 
-        const slotDateTime = new Date(`${format(selectedDate, "yyyy-MM-dd")}T${time}:00`).getTime()
+        const slotStart = toDateTime(selectedDate, time)
+        const slotEnd = addHours(slotStart, 3)
 
-        return bookedSlots.some(slot => {
-            const start = new Date(slot.startTime).getTime()
-            const end = new Date(slot.endTime).getTime()
-            return slotDateTime >= start && slotDateTime < end
-        })
+        return bookedSlots.some(slot =>
+            overlaps(slotStart, slotEnd, new Date(slot.startTime), new Date(slot.endTime))
+        )
     }
 
     const handleOpenChange = (open: boolean) => {
