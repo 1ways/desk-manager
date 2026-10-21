@@ -5,7 +5,7 @@ import User from "../models/User"
 
 export const register = async (req: Request, res: Response): Promise<any> => {
     try {
-        const { email, firstName, lastName, password, role } = req.body
+        const { email, firstName, lastName, password } = req.body
 
         const existingUser = await User.findOne({ email })
         if (existingUser) {
@@ -20,7 +20,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
             firstName,
             lastName,
             passwordHash,
-            role: role || "user"
+            role: "user"
         })
 
         await newUser.save()

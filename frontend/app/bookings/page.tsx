@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import api from "@/lib/api"
 import { useAuthStore } from "@/store/authStore"
-import Link from "next/link"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Clock, MapPin, XCircle, ArrowLeft, User as UserIcon } from "lucide-react"

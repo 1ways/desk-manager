@@ -2,6 +2,7 @@ import { Response } from "express"
 import Booking from "../models/Booking"
 import Resource from "../models/Resource"
 import { AuthRequest } from "../middleware/auth"
+import { overlapFilter } from "../utils/bookingOverlap"
 
 export const createBooking = async (req: AuthRequest, res: Response): Promise<any> => {
     try {
@@ -15,10 +16,7 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<an
         const conflict = await Booking.findOne({
             resourceId,
             status: "confirmed",
-            $and: [
-                { startTime: { $lt: new Date(endTime) } },
-                { endTime: { $gt: new Date(startTime) } }
-            ]
+            ...overlapFilter(new Date(startTime), new Date(endTime))
         })
 
         if (conflict) {

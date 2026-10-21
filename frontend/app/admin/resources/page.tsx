@@ -23,14 +23,7 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog"
 import { ArrowLeft, Edit, Plus, Trash2 } from "lucide-react"
-
-interface Resource {
-    _id: string
-    name: string
-    type: "desk" | "room"
-    location: string
-    status: "active" | "maintenance" | "booked"
-}
+import { Resource } from "@/shared/types"
 
 const emptyResourceData: Omit<Resource, "_id"> = { name: "", type: "desk", location: "", status: "active" }
 

@@ -1,5 +1,9 @@
 import { Request, Response } from "express"
 import Resource from "../models/Resource"
+import Booking from "../models/Booking"
+import { overlapFilter } from "../utils/bookingOverlap"
+
+export type Availability = "free" | "booked" | "maintenance"
 
 export const getAllResources = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -13,7 +17,7 @@ export const getAllResources = async (req: Request, res: Response): Promise<void
 
 export const createResource = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, type, location, status } = req.body
+        const { name, type, location, status, meshName } = req.body
 
         const newResource = new Resource({
             name,
@@ -34,7 +38,7 @@ export const updateResource = async (req: Request, res: Response): Promise<any> 
         const { id } = req.params
         const updatedData = req.body
 
-        const resource = await Resource.findByIdAndUpdate(id, updatedData, { new: true })
+        const resource = await Resource.findByIdAndUpdate(id, updatedData, { new: true, runValidators: true })
 
         if (!resource) {
             return res.status(404).json({ message: "Resource not found" })
@@ -59,4 +63,45 @@ export const deleteResource = async (req: Request, res: Response): Promise<any> 
     } catch (error) {
         res.status(500).json({ message: "Error during deletion", error })
     }
-} 
+}
+
+export const getResourcesAvailability = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { from, to } = req.query
+
+        if (typeof from !== "string" || typeof to !== "string") {
+            return res.status(400).json({ message: "Query parameters from and to are required" })
+        }
+
+        const fromDate = new Date(from)
+        const toDate = new Date(to)
+
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime()) || fromDate >= toDate) {
+            return res.status(400).json({ message: "Invalid time range" })
+        }
+
+        const busyIds = await Booking.distinct("resourceId", {
+            status: "confirmed",
+            ...overlapFilter(fromDate, toDate)
+        })
+        const busy = new Set(busyIds.map(id => String(id)))
+
+        const resources = await Resource.find().lean()
+
+        const result = resources.map(resource => {
+            let availability: Availability = "free"
+
+            if (resource.status === "maintenance") {
+                availability = "maintenance"
+            } else if (busy.has(String(resource._id))) {
+                availability = "booked"
+            }
+
+            return { ...resource, availability }
+        })
+
+        res.json(result)
+    } catch (error) {
+        res.status(500).json({ message: "Error checking availability", error })
+    }
+}
