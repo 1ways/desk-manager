@@ -23,7 +23,8 @@ export const createResource = async (req: Request, res: Response): Promise<void>
             name,
             type,
             location,
-            status
+            status,
+            meshName
         })
 
         await newResource.save()

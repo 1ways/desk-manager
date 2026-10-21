@@ -29,7 +29,6 @@ app.use("/api/auth", authRoutes)
 app.use("/api/resources", resourceRoutes)
 app.use("/api/bookings", bookingRoutes)
 app.use("/api/users", userRoutes)
-app.use("/api/users", userRoutes)
 app.use("/api/availability", availabilityRoutes)
 
 app.get("/api/protected", authenticate, (req: AuthRequest, res: Response) => {
