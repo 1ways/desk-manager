@@ -168,7 +168,7 @@ export default function BookingsPage() {
                                         {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                                     </div>
 
-                                    {!isCancelled && !hasStarted && (
+                                    {!isCancelled && (isAdmin || !hasStarted) && (
                                         <Button
                                             variant="destructive"
                                             className="w-full mt-4 flex items-center gap-2"

@@ -31,7 +31,7 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<an
         }
 
         if (!mongoose.isValidObjectId(resourceId)) {
-            return res.status(400).json({ message: "Proper resource id is required" })
+            return res.status(400).json({ message: "A valid resource id is required" })
         }
 
         const resource = await Resource.findById(resourceId)
@@ -79,7 +79,7 @@ export const cancelBooking = async (req: AuthRequest, res: Response): Promise<an
         const { id } = req.params
 
         if (!mongoose.isValidObjectId(id)) {
-            return res.status(400).json({ message: "Proper booking id is required" })
+            return res.status(400).json({ message: "A valid booking id is required" })
         }
 
         const booking = await Booking.findById(id)
@@ -90,12 +90,12 @@ export const cancelBooking = async (req: AuthRequest, res: Response): Promise<an
             return res.status(403).json({ message: "You cannot cancel someone else's booking" })
         }
 
-        if (req.user?.role !== "admin" && booking.startTime <= new Date()) {
-            return res.status(400).json({ message: "You can only cancel a booking that has not started yet" })
-        }
-
         if (booking.status === "cancelled") {
             return res.status(400).json({ message: "Booking is already cancelled" })
+        }
+
+        if (req.user?.role !== "admin" && booking.startTime <= new Date()) {
+            return res.status(400).json({ message: "You can only cancel a booking that has not started yet" })
         }
 
         booking.status = "cancelled"

@@ -8,11 +8,11 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         const { email, firstName, lastName, password } = req.body
 
         if (typeof email !== "string" || typeof firstName !== "string" || typeof lastName !== "string" || typeof password !== "string") {
-            return res.status(400).json({ message: "Fields are invalid" })
+            return res.status(400).json({ message: "All fields must be text" })
         }
 
         if (!email || !firstName || !lastName || !password) {
-            return res.status(400).json({ message: "Email, First name, Last name and pasword are required" })
+            return res.status(400).json({ message: "Email, first name, last name and password are required" })
         }
 
         const existingUser = await User.findOne({ email })
@@ -43,11 +43,11 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         const { email, password } = req.body
 
         if (typeof email !== "string" || typeof password !== "string") {
-            return res.status(400).json({ message: "Fields are invalid" })
+            return res.status(400).json({ message: "All fields must be text" })
         }
 
         if (!email || !password) {
-            return res.status(400).json({ message: "Email and pasword are required" })
+            return res.status(400).json({ message: "Email and password are required" })
         }
 
         const user = await User.findOne({ email })
