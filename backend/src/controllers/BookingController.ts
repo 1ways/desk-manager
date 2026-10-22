@@ -3,6 +3,7 @@ import Booking from "../models/Booking"
 import Resource from "../models/Resource"
 import { AuthRequest } from "../middleware/auth"
 import { overlapFilter } from "../utils/bookingOverlap"
+import mongoose from "mongoose"
 
 export const createBooking = async (req: AuthRequest, res: Response): Promise<any> => {
     try {
@@ -13,8 +14,24 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<an
         const start = new Date(startTime)
         const end = new Date(endTime)
 
-        if (start < now || end <= start || !startTime || !endTime) {
-            return res.status(400).json({ message: "Received data is invalid" })
+        if (!startTime || !endTime) {
+            return res.status(400).json({ message: "Start time and end time are required" })
+        }
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            return res.status(400).json({ message: "Start time or end time is invalid" })
+        }
+
+        if (end <= start) {
+            return res.status(400).json({ message: "End time must be after start time" })
+        }
+
+        if (start < now) {
+            return res.status(400).json({ message: "Booking cannot start in the past" })
+        }
+
+        if (!mongoose.isValidObjectId(resourceId)) {
+            return res.status(400).json({ message: "Proper resource id is required" })
         }
 
         const resource = await Resource.findById(resourceId)
@@ -60,6 +77,11 @@ export const getMyBookings = async (req: AuthRequest, res: Response): Promise<vo
 export const cancelBooking = async (req: AuthRequest, res: Response): Promise<any> => {
     try {
         const { id } = req.params
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(400).json({ message: "Proper booking id is required" })
+        }
+
         const booking = await Booking.findById(id)
 
         if (!booking) return res.status(404).json({ message: "Booking not found" })
@@ -68,8 +90,12 @@ export const cancelBooking = async (req: AuthRequest, res: Response): Promise<an
             return res.status(403).json({ message: "You cannot cancel someone else's booking" })
         }
 
-        if (booking.startTime <= new Date()) {
-            return res.status(400).json({ message: "You only can cancel a booking that not started yet" })
+        if (req.user?.role !== "admin" && booking.startTime <= new Date()) {
+            return res.status(400).json({ message: "You can only cancel a booking that has not started yet" })
+        }
+
+        if (booking.status === "cancelled") {
+            return res.status(400).json({ message: "Booking is already cancelled" })
         }
 
         booking.status = "cancelled"
