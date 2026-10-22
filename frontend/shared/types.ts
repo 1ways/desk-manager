@@ -9,6 +9,8 @@ export interface Resource {
 
 export type Availability = "free" | "booked" | "maintenance"
 
+export type BookingStatus = "cancelled" | "completed" | "in_progress" | "upcoming"
+
 export interface ResourceWithAvailability extends Resource {
     availability: Availability
 }

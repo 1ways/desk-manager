@@ -94,6 +94,10 @@ export const cancelBooking = async (req: AuthRequest, res: Response): Promise<an
             return res.status(400).json({ message: "Booking is already cancelled" })
         }
 
+        if (booking.endTime <= new Date()) {
+            return res.status(400).json({ message: "You cannot cancel a booking that has already ended" })
+        }
+
         if (req.user?.role !== "admin" && booking.startTime <= new Date()) {
             return res.status(400).json({ message: "You can only cancel a booking that has not started yet" })
         }

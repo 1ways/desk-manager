@@ -8,6 +8,8 @@ import { useAuthStore } from "@/store/authStore"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, Clock, MapPin, XCircle, ArrowLeft, User as UserIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { BookingStatus } from "@/shared/types"
+import { cn } from "cn"
 
 interface PopulatedResource {
     _id: string
@@ -30,6 +32,20 @@ interface Booking {
     startTime: string
     endTime: string
     status: "confirmed" | "cancelled"
+}
+
+const bookingStatusLabels: Record<BookingStatus, string> = {
+    cancelled: "CANCELLED",
+    completed: "COMPLETED",
+    in_progress: "IN PROGRESS",
+    upcoming: "UPCOMING"
+}
+
+const bookingStatusStyles: Record<BookingStatus, string> = {
+    cancelled: "bg-red-100 text-red-700",
+    completed: "bg-gray-100 text-gray-700",
+    in_progress: "bg-blue-100 text-blue-700",
+    upcoming: "bg-green-100 text-green-700"
 }
 
 export default function BookingsPage() {
@@ -102,6 +118,18 @@ export default function BookingsPage() {
         })
     }
 
+    const getBookingStatus = (isCancelled: boolean, hasStarted: boolean, hasEnded: boolean): BookingStatus => {
+        if (isCancelled) {
+            return "cancelled"
+        } else if (hasEnded) {
+            return "completed"
+        } else if (hasStarted) {
+            return "in_progress"
+        } else {
+            return "upcoming"
+        }
+    }
+
     if (!isMounted || isLoading) {
         return <div className="flex h-screen items-center justify-center text-gray-500">Loading bookings...</div>
     }
@@ -132,15 +160,16 @@ export default function BookingsPage() {
                     bookings.map((booking) => {
                         const isCancelled = booking.status === "cancelled"
                         const hasStarted = new Date(booking.startTime) <= new Date()
+                        const hasEnded = new Date(booking.endTime) <= new Date()
+                        const bookingStatus = getBookingStatus(isCancelled, hasStarted, hasEnded)
 
                         return (
                             <Card key={booking._id} className={`${isCancelled ? "opacity-60 bg-gray-100" : ""}`}>
                                 <CardHeader className="pb-2">
                                     <div className="flex justify-between items-start">
                                         <CardTitle className="text-lg">{booking.resourceId?.name}</CardTitle>
-                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${isCancelled ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-                                            }`}>
-                                            {booking.status.toUpperCase()}
+                                        <span className={cn("text-xs px-2 py-1 rounded-full font-medium", bookingStatusStyles[bookingStatus])}>
+                                            {bookingStatusLabels[bookingStatus].toUpperCase()}
                                         </span>
                                     </div>
                                 </CardHeader>
@@ -168,7 +197,7 @@ export default function BookingsPage() {
                                         {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                                     </div>
 
-                                    {!isCancelled && (isAdmin || !hasStarted) && (
+                                    {!isCancelled && !hasEnded && (isAdmin || !hasStarted) && (
                                         <Button
                                             variant="destructive"
                                             className="w-full mt-4 flex items-center gap-2"
