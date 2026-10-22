@@ -61,7 +61,7 @@ export default function BookingDialog({ resource, isOpen, onClose, initialDate, 
             const date = initialDate ? new Date(initialDate) : new Date()
             const isStartInPast = !!initialStart && toDateTime(date, initialStart) < new Date()
 
-            setSelectedDate(initialDate ? new Date(initialDate) : new Date())
+            setSelectedDate(date)
             setStartTime(isStartInPast ? "" : initialStart || "")
             setEndTime(isStartInPast ? "" : initialEnd || "")
             setBookingError("")

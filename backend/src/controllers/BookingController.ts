@@ -9,6 +9,14 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<an
         const { resourceId, startTime, endTime } = req.body
         const userId = req.user?.userId
 
+        const now = new Date()
+        const start = new Date(startTime)
+        const end = new Date(endTime)
+
+        if (start < now || end <= start || !startTime || !endTime) {
+            return res.status(400).json({ message: "Received data is invalid" })
+        }
+
         const resource = await Resource.findById(resourceId)
         if (!resource) return res.status(404).json({ message: "Resource not found" })
         if (resource.status !== "active") return res.status(400).json({ message: "Resource is unavailable (under maintenance)" })
@@ -58,6 +66,10 @@ export const cancelBooking = async (req: AuthRequest, res: Response): Promise<an
 
         if (booking.userId.toString() !== req.user?.userId && req.user?.role !== "admin") {
             return res.status(403).json({ message: "You cannot cancel someone else's booking" })
+        }
+
+        if (booking.startTime <= new Date()) {
+            return res.status(400).json({ message: "You only can cancel a booking that not started yet" })
         }
 
         booking.status = "cancelled"

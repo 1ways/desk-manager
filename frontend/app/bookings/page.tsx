@@ -132,6 +132,7 @@ export default function BookingsPage() {
                     bookings.map((booking) => {
                         const isCancelled = booking.status === "cancelled"
                         const isPast = new Date(booking.endTime) < new Date()
+                        const isGoing = new Date(booking.startTime) <= new Date()
 
                         return (
                             <Card key={booking._id} className={`${isCancelled ? "opacity-60 bg-gray-100" : ""}`}>
@@ -168,7 +169,7 @@ export default function BookingsPage() {
                                         {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                                     </div>
 
-                                    {!isCancelled && !isPast && (
+                                    {!isCancelled && !isPast && !isGoing && (
                                         <Button
                                             variant="destructive"
                                             className="w-full mt-4 flex items-center gap-2"

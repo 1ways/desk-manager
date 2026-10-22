@@ -7,6 +7,10 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     try {
         const { email, firstName, lastName, password } = req.body
 
+        if (!email || !firstName || !lastName || !password) {
+            return res.status(400).json({ message: "All data is required" })
+        }
+
         const existingUser = await User.findOne({ email })
         if (existingUser) {
             return res.status(400).json({ message: "A user with this email address already exists" })
@@ -33,6 +37,10 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 export const login = async (req: Request, res: Response): Promise<any> => {
     try {
         const { email, password } = req.body
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "All data is required" })
+        }
 
         const user = await User.findOne({ email })
         if (!user) {
