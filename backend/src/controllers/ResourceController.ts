@@ -2,8 +2,11 @@ import { Request, Response } from "express"
 import Resource from "../models/Resource"
 import Booking from "../models/Booking"
 import { overlapFilter } from "../utils/bookingOverlap"
+import { isDuplicateKeyError } from "../utils/mongoErrors"
 
 export type Availability = "free" | "booked" | "maintenance"
+
+const isBlank = (value: unknown): boolean => typeof value === "string" && value.trim() === ""
 
 export const getAllResources = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -24,12 +27,16 @@ export const createResource = async (req: Request, res: Response): Promise<void>
             type,
             location,
             status,
-            meshName
+            meshName: isBlank(meshName) ? undefined : meshName
         })
 
         await newResource.save()
         res.status(201).json({ message: "The resource has been successfully created", resource: newResource })
     } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            res.status(409).json({ message: "meshName is already used by another resource" })
+            return
+        }
         res.status(500).json({ message: "Error creating a resource", error })
     }
 }
@@ -37,9 +44,11 @@ export const createResource = async (req: Request, res: Response): Promise<void>
 export const updateResource = async (req: Request, res: Response): Promise<any> => {
     try {
         const { id } = req.params
-        const updatedData = req.body
+        const { meshName, ...rest } = req.body
 
-        const resource = await Resource.findByIdAndUpdate(id, updatedData, { new: true, runValidators: true })
+        const updatedData = isBlank(meshName) ? { $set: rest, $unset: { meshName: 1 } } : req.body
+
+        const resource = await Resource.findByIdAndUpdate(id, updatedData, { returnDocument: "after", runValidators: true })
 
         if (!resource) {
             return res.status(404).json({ message: "Resource not found" })
@@ -47,6 +56,9 @@ export const updateResource = async (req: Request, res: Response): Promise<any> 
 
         res.json({ message: "The resource has been updated", resource })
     } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            return res.status(409).json({ message: "meshName is already used by another resource" })
+        }
         res.status(500).json({ message: "Error during update", error })
     }
 }
